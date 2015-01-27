@@ -15,7 +15,9 @@
 -export([add_pool/2,
          remove_pool/1,
          has_pool/1,
-         get_pool_server/1]).
+         get_pool_server/1,
+         pools/0,
+         conns_for_pool/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -40,6 +42,17 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+pools() ->
+    case ets:info(?MODULE) of
+        undefined ->
+            [];
+        _ ->
+            ets:tab2list(?MODULE)
+    end.
+
+conns_for_pool(PoolID) ->
+    emysql_conn_mgr:pools(get_pool_server(PoolID)).
 
 has_pool(PoolID) ->
     case ets:lookup(?MODULE, PoolID) of
