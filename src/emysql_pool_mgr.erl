@@ -109,7 +109,7 @@ get_pool_server(PoolID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ets:new(?MODULE, [named_table, public, set]),
+    ets:new(?MODULE, [named_table, public, set, {read_concurrency, true}]),
     {ok, #state{}, ?HIBERNATE_TIMEOUT}.
 
 %%--------------------------------------------------------------------

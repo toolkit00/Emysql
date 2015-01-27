@@ -135,6 +135,7 @@ do_gen_call(PoolServer, Msg) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Pool]) ->
+    erlang:process_flag(priority, high),
     {ok, #state{pools = [Pool]}}.
 
 %%--------------------------------------------------------------------

@@ -103,8 +103,7 @@
 -export([   start/0, stop/0,
             add_pool/2,
             add_pool/9,
-            add_pool/8, remove_pool/1
-            %%, increment_pool_size/2, decrement_pool_size/2
+            add_pool/8, remove_pool/1, increment_pool_size/2, decrement_pool_size/2
 ]).
 
 %% Interaction API
@@ -362,14 +361,15 @@ remove_pool(PoolId) ->
         ok
     end.
 
-% -spec increment_pool_size(atom(), non_neg_integer()) -> ok | {error, list()}.
-% increment_pool_size(PoolId, Num) when is_integer(Num) ->
-%     {Conns, Reasons} = emysql_conn:open_n_connections(PoolId, Num),
-%     emysql_conn_mgr:add_connections(PoolId, Conns),
-%     case Reasons of
-%         [] -> ok;
-%         _ -> {error, Reasons}
-%     end.
+-spec increment_pool_size(atom(), non_neg_integer()) -> ok | {error, list()}.
+increment_pool_size(PoolId, Num) when is_integer(Num) ->
+    PoolServer = emysql_pool_mgr:get_pool_server(PoolId),
+    {Conns, Reasons} = emysql_conn:open_n_connections(PoolServer, PoolId, Num),
+    emysql_conn_mgr:add_connections(PoolServer, PoolId, Conns),
+    case Reasons of
+        [] -> ok;
+        _ -> {error, Reasons}
+    end.
 
 
 %% @spec decrement_pool_size(PoolId, By) -> ok
@@ -394,10 +394,11 @@ remove_pool(PoolId) ->
 %% @end doc: hd feb 11
 %%
 
-% decrement_pool_size(PoolId, Num) when is_integer(Num) ->
-%     Conns = emysql_conn_mgr:remove_connections(PoolId, Num),
-%     [emysql_conn:close_connection(Conn) || Conn <- Conns],
-%     ok.
+decrement_pool_size(PoolId, Num) when is_integer(Num) ->
+    PoolServer = emysql_pool_mgr:get_pool_server(PoolId),
+    Conns = emysql_conn_mgr:remove_connections(PoolServer, PoolId, Num),
+    [emysql_conn:close_connection(Conn) || Conn <- Conns],
+    ok.
 
 %% @spec prepare(StmtName, Statement) -> ok
 %%      StmtName = atom()
