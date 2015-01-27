@@ -177,7 +177,7 @@ open_connections(Pool) ->
                     ),
                     lists:foreach(fun emysql_conn:close_connection/1, AllConns),
                     {error, Reason}
-			end;
+            end;
         false ->
             {ok, Pool}
     end.
@@ -228,14 +228,14 @@ handshake(Sock, User, Password) ->
            exit(Reason)
    end.
 
-% give_manager_control(Socket) ->
-%     case emysql_conn_mgr:give_manager_control(Socket) of
-%         {error, Reason} ->
-%             gen_tcp:close(Socket),
-%             exit({Reason,
-%                  "Failed to find conn mgr when opening connection. Make sure crypto is started and emysql.app is in the Erlang path."});
-%         ok -> ok
-%    end.
+%% give_manager_control(Socket) ->
+%%     case emysql_conn_mgr:give_manager_control(Socket) of
+%%         {error, Reason} ->
+%%             gen_tcp:close(Socket),
+%%             exit({Reason,
+%%                  "Failed to find conn mgr when opening connection. Make sure crypto is started and emysql.app is in the Erlang path."});
+%%         ok -> ok
+%%    end.
 
 set_database_or_die(#emysql_connection { socket = Socket } = Connection, Database) ->
     case set_database(Connection, Database) of
@@ -306,9 +306,9 @@ add_monitor_ref(Conn, MonitorRef) ->
     Conn#emysql_connection{monitor_ref = MonitorRef}.
 
 close_connection(Conn) ->
-        %% garbage collect statements
-        emysql_statements:remove(Conn#emysql_connection.id),
-        ok = gen_tcp:close(Conn#emysql_connection.socket).
+    %% garbage collect statements
+    emysql_statements:remove(Conn#emysql_connection.id),
+    ok = gen_tcp:close(Conn#emysql_connection.socket).
 
 test_connection(PoolServer, Conn, StayLocked) ->
   case catch emysql_tcp:send_and_recv_packet(Conn#emysql_connection.socket, <<?COM_PING>>, 0) of
@@ -358,16 +358,16 @@ log_warnings(_Sock, _OtherPacket) ->
 
 set_params(_, _, [], Result) -> Result;
 set_params(Connection, Num, Values, _) ->
-	Packet = set_params_packet(Num, Values),
-	emysql_tcp:send_and_recv_packet(Connection#emysql_connection.socket, Packet, 0).
+    Packet = set_params_packet(Num, Values),
+    emysql_tcp:send_and_recv_packet(Connection#emysql_connection.socket, Packet, 0).
 
 set_params_packet(NumStart, Values) ->
-	BinValues = [encode(Val, binary) || Val <- Values],
-	BinNums = [encode(Num, binary) || Num <- lists:seq(NumStart, NumStart + length(Values) - 1)],
-	BinPairs = lists:zip(BinNums, BinValues),
-	Parts = [<<"@", NumBin/binary, "=", ValBin/binary>> || {NumBin, ValBin} <- BinPairs], 
-	Sets = list_to_binary(join(Parts, <<",">>)),
-	<<?COM_QUERY, "SET ", Sets/binary>>.
+    BinValues = [encode(Val, binary) || Val <- Values],
+    BinNums = [encode(Num, binary) || Num <- lists:seq(NumStart, NumStart + length(Values) - 1)],
+    BinPairs = lists:zip(BinNums, BinValues),
+    Parts = [<<"@", NumBin/binary, "=", ValBin/binary>> || {NumBin, ValBin} <- BinPairs], 
+    Sets = list_to_binary(join(Parts, <<",">>)),
+    <<?COM_QUERY, "SET ", Sets/binary>>.
 
 %% @doc Join elements of list with Sep
 %%

@@ -33,10 +33,10 @@
 -export([terminate/2, code_change/3]).
 
 -export([pools/1, remove_pool/2,
-	add_connections/3, remove_connections/3,
-	lock_connection/2, wait_for_connection/2, wait_for_connection/3,
-	pass_connection/2, replace_connection_as_locked/3, replace_connection_as_available/3,
-	find_pool/2, give_manager_control/2]).
+        add_connections/3, remove_connections/3,
+        lock_connection/2, wait_for_connection/2, wait_for_connection/3,
+        pass_connection/2, replace_connection_as_locked/3, replace_connection_as_available/3,
+        find_pool/2, give_manager_control/2]).
 
 -export([start_link/1, stop/1]).
 
@@ -79,21 +79,21 @@ wait_for_connection(PoolServer, PoolId ,Timeout)->
     %% wait to be notified of the next available connection
     %-% io:format("~p waits for connection to pool ~p~n", [self(), PoolId]),
     case do_gen_call(PoolServer, {lock_connection, PoolId, true, self()}) of
-	unavailable ->
-	    %-% io:format("~p is queued~n", [self()]),
-	    receive
-		{connection, Connection} -> Connection
-	    after Timeout ->
-		do_gen_call(PoolServer, {abort_wait, PoolId}),
-		receive
-		    {connection, Connection} -> Connection
-		after
-		    0 -> exit(connection_lock_timeout)
-		end
-	    end;
-	Connection ->
-	    %-% io:format("~p gets connection~n", [self()]),
-	    Connection
+        unavailable ->
+            %-% io:format("~p is queued~n", [self()]),
+            receive
+                {connection, Connection} -> Connection
+            after Timeout ->
+                do_gen_call(PoolServer, {abort_wait, PoolId}),
+                receive
+                    {connection, Connection} -> Connection
+                after
+                    0 -> exit(connection_lock_timeout)
+                end
+            end;
+        Connection ->
+            %-% io:format("~p gets connection~n", [self()]),
+            Connection
     end.
 
 pass_connection(PoolServer, Connection) ->
@@ -117,10 +117,10 @@ give_manager_control(PoolServer, Socket) ->
 %% the error once outside of the gen_server process
 do_gen_call(PoolServer, Msg) ->
     case gen_server:call(PoolServer, Msg, infinity) of
-	{error, Reason} ->
-	    exit(Reason);
-	Result ->
-	    Result
+        {error, Reason} ->
+            exit(Reason);
+        Result ->
+            Result
     end.
 
 %%====================================================================
@@ -178,10 +178,10 @@ handle_call({add_connections, PoolId, Conns}, _From, State) ->
     case find_pool(PoolId, State#state.pools) of
         {Pool, OtherPools} ->
             Pool1 = Pool#pool{available = queue:join(queue:from_list(Conns), Pool#pool.available)},
-	    {NewPool, NewMonitorData} = serve_waiting_pids(Pool1),
-	    NewLockers = lists:foldl(fun({MonitorRef, ConnInfo}, Dict) ->
-						     dict:store(MonitorRef, ConnInfo, Dict)
-				     end, State#state.lockers, NewMonitorData),
+            {NewPool, NewMonitorData} = serve_waiting_pids(Pool1),
+            NewLockers = lists:foldl(fun({MonitorRef, ConnInfo}, Dict) ->
+                                dict:store(MonitorRef, ConnInfo, Dict)
+                        end, State#state.lockers, NewMonitorData),
             State1 = State#state{pools = [NewPool|OtherPools],
 				 lockers = NewLockers},
             {reply, ok, State1};
@@ -296,7 +296,7 @@ handle_call({{replace_connection, Kind}, OldConn, NewConn}, _From, State) ->
     end;
 
 handle_call({stop}, _From, State) ->
-    {stop, normal, ok, State};
+	{stop, normal, ok, State};
 
 handle_call(_, _From, State) -> {reply, {error, invalid_call}, State}.
 
