@@ -34,5 +34,8 @@ start_link() ->
 init(_) ->
     {ok, {{one_for_one, 10, 10}, [
         {emysql_statements, {emysql_statements, start_link, []}, permanent, 5000, worker, [emysql_statements]},
-        {emysql_conn_mgr, {emysql_conn_mgr, start_link, []}, permanent, 5000, worker, [emysql_conn_mgr]}
+        {emysql_pool_mgr, {emysql_pool_mgr, start_link, []}, permanent, 5000, worker, [emysql_pool_mgr]},
+        {emysql_sup_pool_tmp,
+             {emysql_sup_tmp, start_link, [emysql_conn_pool_sup, emysql_conn_mgr]},
+             permanent, 5000, supervisor, [emysql_sup_pool_tmp]}
     ]}}.
