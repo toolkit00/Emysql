@@ -32,7 +32,8 @@
 	affected_rows/1,
 	field_names/1,
 	insert_id/1,
-	result_type/1
+	result_type/1,
+	prop_get_value/3
 ]).
 
 %% Conversion routines
@@ -55,3 +56,9 @@ as_proplist(Res) -> emysql:as_proplist(Res).
 as_record(Res, RecName, Fields) -> emysql:as_record(Res, RecName, Fields).
 as_record(Res, RecName, Fields, Fun) -> emysql:as_record(Res, RecName, Fields, Fun).
 
+
+prop_get_value(K, L, D) ->
+    case lists:keyfind(K, 1, L) of
+        {K, V} -> V;
+        false  -> D
+    end.
