@@ -233,8 +233,7 @@ default_timeout() ->
 % Checks whether a configuration is superficially valid. It checks types and such,
 % it does not check existance of the database or correctness of passwords (that
 % happens when we try to connect to the database.
-config_ok(#pool{ pool_id = PoolId
-               , size = Size
+config_ok(#pool{ size = Size
                , user = User
                , password = Password
                , host = Host
@@ -245,8 +244,7 @@ config_ok(#pool{ pool_id = PoolId
                , connect_timeout = ConnectTimeout
                , warnings = Warnings
                })
-    when is_atom(PoolId),
-         is_integer(Size),
+    when is_integer(Size),
          is_list(User),
          is_list(Password),
          is_list(Host),
