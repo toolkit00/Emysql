@@ -11,5 +11,5 @@
     {applications, [kernel, stdlib, crypto]},
     {env, [
       {default_timeout, 5000},
-      {conn_test_period, 30000}]}
+      {conn_test_period, 28000}]}
 ]}.
