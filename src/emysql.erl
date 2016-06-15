@@ -124,12 +124,11 @@
 ]).
 
 %% Result Data API - Handle results from Mysql
--export([
-	affected_rows/1,
-	result_type/1,
-        field_names/1,
-         insert_id/1
-]).
+-export([ affected_rows/1
+        , result_type/1
+        , field_names/1
+        , insert_id/1
+        ]).
 
 -type state() :: any().
 
@@ -194,19 +193,19 @@ default_timeout() ->
     emysql_app:default_timeout().
 
 %% @spec add_pool(PoolId, Options) -> Result
-%%		PoolId = atom()
-%%		Options = [option()]
-%%		option() = {size, integer()}
-%%		         | {user, string()}
-%%		         | {password, string()}
-%%		         | {host, string()}
-%%		         | {port, integer()}
-%%		         | {database, string() | undefined}
-%%		         | {encoding, atom() | {atom(), atom()}}
-%%		         | {start_cmds, [binary()]}
-%%		         | {connect_timeout, integer()}
-%%		         | {warnings, boolean()}
-%%		Result = {reply, {error, pool_already_exists}, state()} | {reply, ok, state() }
+%%      PoolId = atom()
+%%      Options = [option()]
+%%      option() = {size, integer()}
+%%               | {user, string()}
+%%               | {password, string()}
+%%               | {host, string()}
+%%               | {port, integer()}
+%%               | {database, string() | undefined}
+%%               | {encoding, atom() | {atom(), atom()}}
+%%               | {start_cmds, [binary()]}
+%%               | {connect_timeout, integer()}
+%%               | {warnings, boolean()}
+%%      Result = {reply, {error, pool_already_exists}, state()} | {reply, ok, state() }
 %%
 %% @doc Synchronous call to the connection manager to add a pool.
 %%
@@ -230,8 +229,8 @@ default_timeout() ->
 % it does not check existance of the database or correctness of passwords (that
 % happens when we try to connect to the database.
 config_ok(#pool{pool_id=PoolId,size=Size,user=User,password=Password,host=Host,port=Port,
-		       database=Database,encoding=Encoding,start_cmds=StartCmds,
-		       connect_timeout=ConnectTimeout,warnings=Warnings})
+               database=Database,encoding=Encoding,start_cmds=StartCmds,
+               connect_timeout=ConnectTimeout,warnings=Warnings})
   when is_atom(PoolId),
        is_integer(Size),
        is_list(User),
@@ -266,13 +265,13 @@ add_pool(PoolId, Options) when is_list(Options) ->
     ConnectTimeout = proplists:get_value(connect_timeout, Options, infinity),
     Warnings = proplists:get_value(warnings, Options, false),
     add_pool(#pool{pool_id=PoolId,size=Size, user=User, password=Password,
-			  host=Host, port=Port, database=Database,
-			  encoding=Encoding, start_cmds=StartCmds, 
-			  connect_timeout=ConnectTimeout, warnings=Warnings}).
+              host=Host, port=Port, database=Database,
+              encoding=Encoding, start_cmds=StartCmds,
+              connect_timeout=ConnectTimeout, warnings=Warnings}).
 
 add_pool(#pool{pool_id=PoolId,size=Size,user=User,password=Password,host=Host,port=Port,
-		       database=Database,encoding=Encoding,start_cmds=StartCmds,
-		       connect_timeout=ConnectTimeout,warnings=Warnings}=PoolSettings)->
+               database=Database,encoding=Encoding,start_cmds=StartCmds,
+               connect_timeout=ConnectTimeout,warnings=Warnings}=PoolSettings)->
     config_ok(PoolSettings),
     case emysql_pool_mgr:has_pool(PoolId) of
         true -> 
@@ -332,11 +331,11 @@ add_pool(PoolId, Size, User, Password, Host, Port, Database, Encoding, StartCmds
     add_pool(PoolId, Size, User, Password, Host, Port, Database, Encoding, StartCmds, infinity).
 
 add_pool(PoolId, Size, User, Password, Host, Port, Database, 
-	 Encoding, StartCmds, ConnectTimeout)->    
+     Encoding, StartCmds, ConnectTimeout)->
     add_pool(PoolId,[{size,Size},{user,User},{password,Password},
-		     {host,Host},{port,Port},{database,Database},
-		     {encoding,Encoding},{start_cmds,StartCmds},
-		     {connect_timeout,ConnectTimeout}]).
+             {host,Host},{port,Port},{database,Database},
+             {encoding,Encoding},{start_cmds,StartCmds},
+             {connect_timeout,ConnectTimeout}]).
 
 %% @spec remove_pool(PoolId) -> ok
 %%      PoolId = atom()
@@ -685,7 +684,7 @@ result_type(#eof_packet{})    -> eof.
 -spec as_dict(Result) -> Dict
   when
     Result :: #result_packet{},
-    Dict :: dict().
+    Dict :: dict:dict().
 as_dict(Res) -> emysql_conv:as_dict(Res).
 
 
