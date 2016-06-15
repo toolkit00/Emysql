@@ -128,8 +128,9 @@
                        , rows, extra
                        }).
 
--define(TIMEOUT, 8000).
--define(LOCK_TIMEOUT, 5000).
+-define(TIMEOUT, timer:seconds(8)).
+-define(LOCK_TIMEOUT, timer:seconds(5)).
+-define(CONN_TEST_PERIOD, timer:seconds(30)).
 -define(MAXPACKETBYTES, 50000000).
 -define(LONG_PASSWORD, 1).
 -define(LONG_FLAG, 4).
@@ -140,7 +141,6 @@
 -define(TRANSACTIONS, 8192).
 -define(SECURE_CONNECTION, 32768).
 -define(CONNECT_WITH_DB, 8).
--define(CONN_TEST_PERIOD, 30).
 -define(TCP_RECV_BUFFER, 8192).
 
 

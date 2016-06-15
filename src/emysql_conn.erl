@@ -205,7 +205,7 @@ open_connection(#pool{pool_id=PoolId, host=Host, port=Port, user=User,
                             caps = Caps,
                             language = Language,
                             test_period = Pool#pool.conn_test_period,
-                            last_test_time = now_seconds(),
+                            last_test_time = now_milliseconds(),
                             warnings = Pool#pool.warnings
                            },
             %%-% io:format("~p open connection: ... set db ...~n", [self()]),
@@ -320,7 +320,7 @@ test_connection(PoolServer, Conn, StayLocked) ->
           exit({connection_down, {and_conn_reset_failed, FailedReset}})
       end;
     _ ->
-       NewConn = Conn#emysql_connection{last_test_time = now_seconds()},
+       NewConn = Conn#emysql_connection{last_test_time = now_milliseconds()},
        case StayLocked of
          pass -> emysql_conn_mgr:replace_connection_as_available(PoolServer, Conn, NewConn);
          keep -> emysql_conn_mgr:replace_connection_as_locked(PoolServer, Conn, NewConn)
@@ -331,11 +331,11 @@ test_connection(PoolServer, Conn, StayLocked) ->
 need_test_connection(Conn) ->
    (Conn#emysql_connection.test_period =:= 0) orelse
      (Conn#emysql_connection.last_test_time =:= 0) orelse
-     (Conn#emysql_connection.last_test_time + Conn#emysql_connection.test_period < now_seconds()).
+     (Conn#emysql_connection.last_test_time + Conn#emysql_connection.test_period < now_milliseconds()).
 
-now_seconds() ->
+now_milliseconds() ->
    {M, S, _} = os:timestamp(),
-   M * 1000000 + S.
+   timer:seconds(M * 1000000 + S).
 
 %%--------------------------------------------------------------------
 %%% Internal functions
