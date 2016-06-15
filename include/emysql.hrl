@@ -41,7 +41,7 @@
               , locked     = gb_trees:empty() :: gb_tree:gb_tree()
               , waiting    = queue:new()      :: queue:queue()
               , start_cmds = []               :: string()
-              , conn_test_period = 0          :: number()
+              , conn_test_period = emysql_app:conn_test_period() :: number()
               , connect_timeout  = infinity   :: number() | infinity
               , warnings         = false      :: boolean()
               }).
@@ -140,7 +140,7 @@
 -define(TRANSACTIONS, 8192).
 -define(SECURE_CONNECTION, 32768).
 -define(CONNECT_WITH_DB, 8).
--define(CONN_TEST_PERIOD, 28000).
+-define(CONN_TEST_PERIOD, 30).
 -define(TCP_RECV_BUFFER, 8192).
 
 

@@ -846,7 +846,9 @@ monitor_work(PoolServer, Connection0, Timeout, Args)
                           Parent ! {self(), apply(fun emysql_conn:execute/3, Args)}
                       end),
     receive
-        {'DOWN', Mref, process, Pid, tcp_connection_closed} ->
+        {'DOWN', Mref, process, Pid, Reason}
+            when Reason == {failed_to_recv_packet_header, closed};
+                 Reason == tcp_connection_closed ->
             case emysql_conn:reset_connection(PoolServer,
                                               emysql_conn_mgr:pools(PoolServer),
                                               Connection, keep) of
@@ -862,7 +864,8 @@ monitor_work(PoolServer, Connection0, Timeout, Args)
             %% if the process dies, reset the connection
             %% and re-throw the error on the current pid.
             %% catch if re-open fails and also signal it.
-            case emysql_conn:reset_connection(emysql_conn_mgr:pools(PoolServer),
+            case emysql_conn:reset_connection(PoolServer,
+                                              emysql_conn_mgr:pools(PoolServer),
                                               Connection, pass) of
                 {error,FailedReset} ->
                     exit({Reason, {and_conn_reset_failed, FailedReset}});
@@ -880,6 +883,8 @@ monitor_work(PoolServer, Connection0, Timeout, Args)
         %% then reset the connection and throw a timeout error
         erlang:demonitor(Mref, [flush]),
         exit(Pid, kill),
-        emysql_conn:reset_connection(emysql_conn_mgr:pools(PoolServer), Connection, pass),
+        emysql_conn:reset_connection(PoolServer,
+                                     emysql_conn_mgr:pools(PoolServer),
+                                     Connection, pass),
         exit(mysql_timeout)
     end.
