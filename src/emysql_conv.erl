@@ -6,41 +6,56 @@
 -include("emysql.hrl").
 
 %% Conversion routines
--export([
-         as_dict/1,
-         as_json/1,
-         as_proplist/1,
-         as_record/3,
-         as_record/4
-]).
+-export([ as_dict/1
+        , as_json/1
+        , as_proplist/1
+        , as_record/3
+        , as_record/4
+        , as_maps/1
+        ]).
 
 %% @see emysql:as_dict/1
 as_dict(Res = #result_packet{}) ->
     dict:from_list(lists:flatten(as_proplist(Res))).
 
 %% @see emysql:as_proplist/1
-as_proplist(#result_packet{field_list=_Cols,rows=_Rows}) when _Cols =:= undefined,
-                                                              _Rows =:= undefined ->
+as_proplist(#result_packet{field_list = undefined, rows = undefined}) ->
     [];
-as_proplist(#result_packet{field_list=_Cols,rows=_Rows}) when is_list(_Cols),
-                                                              _Rows =:= undefined ->
+as_proplist(#result_packet{field_list = Cols, rows = undefined})
+    when is_list(Cols) ->
     [];
-as_proplist(#result_packet{field_list=_Cols,rows=_Rows}) when is_list(_Cols),
-                                                              _Rows =:= [] ->
+as_proplist(#result_packet{field_list = Cols, rows = []})
+    when is_list(Cols) ->
     [];
-as_proplist(Res = #result_packet{field_list=Cols,rows=Rows}) when is_list(Cols),
-                                                                  is_list(Rows) ->
+as_proplist(Res = #result_packet{field_list = Cols, rows = Rows})
+    when is_list(Cols), is_list(Rows) ->
     Fields = emysql:field_names(Res),
     [begin
         [{K, V} || {K, V} <- lists:zip(Fields, R)]
-    end || R <- Rows].
+     end || R <- Rows].
+
+%% @see emysql:as_maps/1
+as_maps(#result_packet{field_list = undefined, rows = undefined}) ->
+    [];
+as_maps(#result_packet{field_list = Cols, rows = undefined})
+    when is_list(Cols) ->
+    [];
+as_maps(#result_packet{field_list = Cols, rows = []})
+    when is_list(Cols) ->
+    [];
+as_maps(Res = #result_packet{field_list = Cols, rows = Rows})
+    when is_list(Cols), is_list(Rows) ->
+    Fields = emysql:field_names(Res),
+    [begin
+        maps:from_list([{K, V} || {K, V} <- lists:zip(Fields, R)])
+     end || R <- Rows].
 
 %% @see emysql:as_record/1
-as_record(Result = #result_packet{}, RecordName, Fields, Fun) when is_atom(RecordName), is_list(Fields), is_function(Fun) ->
+as_record(Result = #result_packet{}, RecordName, Fields, Fun)
+    when is_atom(RecordName), is_list(Fields), is_function(Fun) ->
     Columns = Result#result_packet.field_list,
-
     S = lists:seq(1, length(Columns)),
-    P = lists:zip([ binary_to_atom(C1#field.name, utf8) || C1 <- Columns ], S),
+    P = lists:zip([binary_to_atom(C1#field.name, utf8) || C1 <- Columns], S),
     F = fun(FieldName) ->
         case proplists:lookup(FieldName, P) of
             none ->
@@ -54,17 +69,18 @@ as_record(Result = #result_packet{}, RecordName, Fields, Fun) when is_atom(Recor
         RecordData = [ Fx(Row) || Fx <- Fs ],
         Fun(list_to_tuple([RecordName|RecordData]))
     end,
-    [ F1(Row) || Row <- Result#result_packet.rows ].
+    [F1(Row) || Row <- Result#result_packet.rows].
 
-as_record(Result = #result_packet{}, RecordName, Fields) when is_atom(RecordName), is_list(Fields) ->
+as_record(Result = #result_packet{}, RecordName, Fields)
+    when is_atom(RecordName), is_list(Fields) ->
     as_record(Result, RecordName, Fields, fun(A) -> A end).
 
 %% @see emysql:as_json/1
-as_json(#result_packet { rows = Rows } = Result) ->
+as_json(#result_packet{rows = Rows} = Result) ->
     Fields = emysql:field_names(Result),
     [begin
         [{K, json_val(V)} || {K, V} <- lists:zip(Fields, Row)]
-    end || Row <- Rows].
+     end || Row <- Rows].
 
 json_val(undefined) ->
     null;

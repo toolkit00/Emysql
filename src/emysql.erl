@@ -126,6 +126,7 @@
         , as_proplist/1
         , as_record/3
         , as_record/4
+        , as_maps/1
         ]).
 
 %% Result Data API - Handle results from Mysql
@@ -709,7 +710,8 @@ execute(PoolId, StmtName, Args, Timeout, nonblocking)
     PoolServer = emysql_pool_mgr:get_pool_server(PoolId),
     case emysql_conn_mgr:lock_connection(PoolId) of
         Connection when is_record(Connection, emysql_connection) ->
-            monitor_work(PoolServer, Connection, Timeout, [Connection, StmtName, Args]);
+            monitor_work(PoolServer, Connection, Timeout,
+                         [Connection, StmtName, Args]);
         unavailable ->
             unavailable
     end.
@@ -748,16 +750,17 @@ result_type(#eof_packet{})    -> eof.
 %%
 %% fetch_foo() ->
 %%  Res = emysql:execute(pool1, "select * from foo"),
-%%  Res:as_dict(Res).
+%%  emysql:as_dict(Res).
 -spec as_dict(Result) -> Dict
-  when
+    when
     Result :: #result_packet{},
     Dict :: dict:dict().
-as_dict(Res) -> emysql_conv:as_dict(Res).
-
+as_dict(Res) ->
+    emysql_conv:as_dict(Res).
 
 %% @doc package row data as erlang json (jsx/jiffy compatible)
-as_json(Res) -> emysql_conv:as_json(Res).
+as_json(Res) ->
+    emysql_conv:as_json(Res).
 
 %% @spec as_proplist(Result) -> proplist
 %%      Result = #result_packet{}
@@ -768,15 +771,17 @@ as_json(Res) -> emysql_conv:as_json(Res).
 %%
 %% fetch_foo() ->
 %%  Res = emysql:execute(pool1, "select * from foo"),
-%%  Res:as_proplist(Res).
+%%  emysql:as_proplist(Res).
 -spec as_proplist(Result) -> [PropRow]
-   when
-     Result :: #result_packet{},
-     PropRow :: proplists:proplist().
-as_proplist(Res) -> emysql_conv:as_proplist(Res).
+    when
+    Result :: #result_packet{},
+    PropRow :: proplists:proplist().
+as_proplist(Res) ->
+    emysql_conv:as_proplist(Res).
 
 %% @equiv as_record(Res, Recname, Fields, fun(A) -> A end)
-as_record(Res, Recname, Fields) -> emysql_conv:as_record(Res, Recname, Fields).
+as_record(Res, Recname, Fields) ->
+    emysql_conv:as_record(Res, Recname, Fields).
 
 %% @spec as_record(Result, RecordName, Fields, Fun) -> Result
 %%      Result = #result_packet{}
@@ -795,8 +800,24 @@ as_record(Res, Recname, Fields) -> emysql_conv:as_record(Res, Recname, Fields).
 %%
 %% fetch_foo() ->
 %%  Res = emysql:execute(pool1, "select * from foo"),
-%%  Res:as_record(foo, record_info(fields, foo)).
-as_record(Res, Recname, Fields, Fun) -> emysql_conv:as_record(Res, Recname, Fields, Fun).
+%%  emysql:as_record(foo, record_info(fields, foo)).
+as_record(Res, Recname, Fields, Fun) ->
+    emysql_conv:as_record(Res, Recname, Fields, Fun).
+
+%% @spec as_maps(Result) -> map().
+%%      Result = #result_packet{}
+%%
+%% @doc package row data as a map
+%%
+%% -module(fetch_example).
+%%
+%% fetch_foo() ->
+%%  Res = emysql:execute(pool1, "select * from foo"),
+%%  emysql:as_maps(Res).
+-spec as_maps(Result) -> map()
+    when Result :: #result_packet{}.
+as_maps(Res) ->
+    emysql_conv:as_maps(Res).
 
 %%--------------------------------------------------------------------
 %%% Internal functions
