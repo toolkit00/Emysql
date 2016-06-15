@@ -32,11 +32,13 @@
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2]).
 -export([terminate/2, code_change/3]).
 
--export([pools/0, add_pool/1, has_pool/1,remove_pool/1,
-        add_connections/2, remove_connections/2,
-        lock_connection/1, wait_for_connection/1, wait_for_connection/2,
-        pass_connection/1, replace_connection_as_locked/2, replace_connection_as_available/2,
-        find_pool/2, give_manager_control/1]).
+-export([pools/1, remove_pool/2,
+        add_connections/3, remove_connections/3,
+        lock_connection/2, wait_for_connection/2, wait_for_connection/3,
+        pass_connection/2, replace_connection_as_locked/3, replace_connection_as_available/3,
+        find_pool/2, give_manager_control/2]).
+
+-export([start_link/1, stop/1]).
 
 -include("emysql.hrl").
 
@@ -51,42 +53,38 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Pool) ->
+    gen_server:start_link(?MODULE, [Pool], []).
 
-pools() ->
-    gen_server:call(?MODULE, pools, infinity).
+pools(PoolServer) ->
+    gen_server:call(PoolServer, pools, infinity).
 
-add_pool(Pool) ->
-    do_gen_call({add_pool, Pool}).
+remove_pool(PoolServer, PoolId) ->
+    do_gen_call(PoolServer, {remove_pool, PoolId}).
 
-has_pool(Pool) ->
-    do_gen_call({has_pool, Pool}).
+add_connections(PoolServer, PoolId, Conns) when is_list(Conns) ->
+    do_gen_call(PoolServer, {add_connections, PoolId, Conns}).
 
-remove_pool(PoolId) ->
-    do_gen_call({remove_pool, PoolId}).
+remove_connections(PoolServer, PoolId, Num) when is_integer(Num) ->
+    do_gen_call(PoolServer, {remove_connections, PoolId, Num}).
 
-add_connections(PoolId, Conns) when is_list(Conns) ->
-    do_gen_call({add_connections, PoolId, Conns}).
+lock_connection(PoolServer, PoolId)->
+    do_gen_call(PoolServer, {lock_connection, PoolId, false, self()}).
 
-remove_connections(PoolId, Num) when is_integer(Num) ->
-    do_gen_call({remove_connections, PoolId, Num}).
+wait_for_connection(PoolServer, PoolId)->
+    wait_for_connection(PoolServer, PoolId, lock_timeout()).
 
-lock_connection(PoolId)->
-	do_gen_call({lock_connection, PoolId, false, self()}).
-
-wait_for_connection(PoolId)->
-	wait_for_connection(PoolId, lock_timeout()).
-
-wait_for_connection(PoolId ,Timeout)->
+wait_for_connection(PoolServer, PoolId ,Timeout)->
     %% try to lock a connection. if no connections are available then
     %% wait to be notified of the next available connection
     %-% io:format("~p waits for connection to pool ~p~n", [self(), PoolId]),
-    case do_gen_call({lock_connection, PoolId, true, self()}) of
+    case do_gen_call(PoolServer, {lock_connection, PoolId, true, self()}) of
         unavailable ->
             %-% io:format("~p is queued~n", [self()]),
             receive
                 {connection, Connection} -> Connection
             after Timeout ->
-                do_gen_call({abort_wait, PoolId}),
+                do_gen_call(PoolServer, {abort_wait, PoolId}),
                 receive
                     {connection, Connection} -> Connection
                 after
@@ -98,27 +96,27 @@ wait_for_connection(PoolId ,Timeout)->
             Connection
     end.
 
-pass_connection(Connection) ->
-    do_gen_call({{replace_connection, available}, Connection, Connection}).
+pass_connection(PoolServer, Connection) ->
+    do_gen_call(PoolServer, {{replace_connection, available}, Connection, Connection}).
 
-replace_connection_as_available(OldConn, NewConn) ->
-    do_gen_call({{replace_connection, available}, OldConn, NewConn}).
+replace_connection_as_available(PoolServer, OldConn, NewConn) ->
+    do_gen_call(PoolServer, {{replace_connection, available}, OldConn, NewConn}).
 
-replace_connection_as_locked(OldConn, NewConn) ->
-    do_gen_call({{replace_connection, locked}, OldConn, NewConn}).
+replace_connection_as_locked(PoolServer, OldConn, NewConn) ->
+    do_gen_call(PoolServer, {{replace_connection, locked}, OldConn, NewConn}).
 
-give_manager_control(Socket) ->
-	case whereis(?MODULE) of
-		undefined -> {error ,failed_to_find_conn_mgr};
-		MgrPid -> gen_tcp:controlling_process(Socket, MgrPid)
-	end.
+stop(PoolServer) ->
+    do_gen_call(PoolServer, {stop}).
+
+give_manager_control(PoolServer, Socket) ->
+    gen_tcp:controlling_process(Socket, PoolServer).
 
 %% the stateful loop functions of the gen_server never
 %% want to call exit/1 because it would crash the gen_server.
 %% instead we want to return error tuples and then throw
 %% the error once outside of the gen_server process
-do_gen_call(Msg) ->
-    case gen_server:call(?MODULE, Msg, infinity) of
+do_gen_call(PoolServer, Msg) ->
+    case gen_server:call(PoolServer, Msg, infinity) of
         {error, Reason} ->
             exit(Reason);
         Result ->
@@ -136,17 +134,9 @@ do_gen_call(Msg) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-    Pools = lists:map(
-        fun (Pool1) ->
-                case emysql_conn:open_connections(Pool1) of
-                    {ok, Pool2} -> Pool2;
-                    {error, Reason} -> throw(Reason)
-                end
-        end,
-        initialize_pools()
-    ),
-    {ok, #state{pools=Pools}}.
+init([Pool]) ->
+    erlang:process_flag(priority, high),
+    {ok, #state{pools = [Pool]}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -188,10 +178,10 @@ handle_call({add_connections, PoolId, Conns}, _From, State) ->
     case find_pool(PoolId, State#state.pools) of
         {Pool, OtherPools} ->
             Pool1 = Pool#pool{available = queue:join(queue:from_list(Conns), Pool#pool.available)},
-	    {NewPool, NewMonitorData} = serve_waiting_pids(Pool1),
-	    NewLockers = lists:foldl(fun({MonitorRef, ConnInfo}, Dict) ->
-						     dict:store(MonitorRef, ConnInfo, Dict)
-				     end, State#state.lockers, NewMonitorData),
+            {NewPool, NewMonitorData} = serve_waiting_pids(Pool1),
+            NewLockers = lists:foldl(fun({MonitorRef, ConnInfo}, Dict) ->
+                                dict:store(MonitorRef, ConnInfo, Dict)
+                        end, State#state.lockers, NewMonitorData),
             State1 = State#state{pools = [NewPool|OtherPools],
 				 lockers = NewLockers},
             {reply, ok, State1};
@@ -305,6 +295,9 @@ handle_call({{replace_connection, Kind}, OldConn, NewConn}, _From, State) ->
 		    {reply, {error, pool_not_found}, State}
     end;
 
+handle_call({stop}, _From, State) ->
+	{stop, normal, ok, State};
+
 handle_call(_, _From, State) -> {reply, {error, invalid_call}, State}.
 
 %%--------------------------------------------------------------------
@@ -368,23 +361,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-initialize_pools() ->
-    %% if the emysql application values are not present in the config
-    %% file we will initialize and empty set of pools. Otherwise, the
-    %% values defined in the config are used to initialize the state.
-    [
-        #pool{
-            pool_id = PoolId,
-            size = proplists:get_value(size, Props, 1),
-            user = proplists:get_value(user, Props),
-            password = proplists:get_value(password, Props),
-            host = proplists:get_value(host, Props),
-            port = proplists:get_value(port, Props),
-            database = proplists:get_value(database, Props),
-            encoding = proplists:get_value(encoding, Props),
-            start_cmds = proplists:get_value(start_cmds, Props, [])
-        } || {PoolId, Props} <- emysql_app:pools()
-    ].
 
 find_pool(PoolId, Pools) ->
     find_pool(PoolId, Pools, []).
