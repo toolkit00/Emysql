@@ -708,7 +708,7 @@ execute(PoolId, StmtName, Args, Timeout, nonblocking)
          is_list(Args) andalso
          is_integer(Timeout) ->
     PoolServer = emysql_pool_mgr:get_pool_server(PoolId),
-    case emysql_conn_mgr:lock_connection(PoolServer, PoolId) of
+    case emysql_conn_mgr:lock_connection(PoolId) of
         Connection when is_record(Connection, emysql_connection) ->
             monitor_work(PoolServer, Connection, Timeout,
                          [Connection, StmtName, Args]);
@@ -866,12 +866,10 @@ monitor_work(PoolServer, Connection0, Timeout, Args)
                           put(query_arguments, Args),
                           Parent ! {self(), apply(fun emysql_conn:execute/3, Args)}
                       end),
-    RetryWhenClosed = emysql_app:retry_when_closed(),
     receive
         {'DOWN', Mref, process, Pid, Reason}
             when Reason == {failed_to_recv_packet_header, closed};
-                 Reason == tcp_connection_closed,
-                 RetryWhenClosed == true ->
+                 Reason == tcp_connection_closed ->
             case emysql_conn:reset_connection(PoolServer,
                                               emysql_conn_mgr:pools(PoolServer),
                                               Connection, keep) of
