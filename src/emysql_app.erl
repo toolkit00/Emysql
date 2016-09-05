@@ -31,6 +31,7 @@
         , lock_timeout/0
         , pools/0
         , conn_test_period/0
+        , retry_when_closed/0
         ]).
 
 -include("emysql.hrl").
@@ -39,8 +40,8 @@ start(_Type, _StartArgs) ->
     emysql_sup:start_link().
 
 stop(_State) ->
-    ok = lists:foreach(fun(Pool) -> emysql:remove_pool(Pool#pool.pool_id) end,
-                       emysql_conn_mgr:pools()).
+    ok = lists:foreach(fun(Pool) -> emysql_pool_mgr:remove_pool(Pool) end,
+                       emysql_pool_mgr:pools()).
 
 default_timeout() ->
     case application:get_env(emysql, default_timeout) of
@@ -63,7 +64,15 @@ pools() ->
     end.
 
 conn_test_period() ->
-  case application:get_env(emysql, conn_test_period) of
-    undefined -> ?CONN_TEST_PERIOD;
-    {ok, Period} -> Period
-  end.
+    case application:get_env(emysql, conn_test_period) of
+        undefined -> ?CONN_TEST_PERIOD;
+        {ok, Period} -> Period
+    end.
+
+retry_when_closed() ->
+    case application:get_env(emysql, retry_when_closed) of
+        undefined ->
+            false;
+        {ok, true} ->
+            true
+    end.
