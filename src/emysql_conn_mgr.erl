@@ -321,8 +321,9 @@ handle_info({'DOWN', MonitorRef, _, _, _}, State) ->
 			case find_pool(PoolId, State#state.pools) of
 				{Pool, _} ->
 					case gb_trees:lookup(ConnId, Pool#pool.locked) of
-						{value, Conn} -> async_reset_conn(State#state.pools, Conn);
-						_             -> ok
+						{value, Conn} ->
+                            async_reset_conn(self(), State#state.pools, Conn);
+						_ -> ok
 					end;
 				_ ->
 					ok
@@ -335,11 +336,11 @@ handle_info({'DOWN', MonitorRef, _, _, _}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-async_reset_conn(Pools, Conn) ->
+async_reset_conn(PoolServer, Pools, Conn) ->
 	spawn(fun() ->
 			      %% This interacts with the conn mgr so needs to be spawned
 			      %% TODO: refactor
-			      emysql_conn:reset_connection(Pools, Conn, pass)
+			      emysql_conn:reset_connection(PoolServer, Pools, Conn, pass)
 	      end).
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
