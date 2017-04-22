@@ -869,8 +869,19 @@ monitor_work(PoolServer, Connection0, Timeout, Args)
     RetryWhenClosed = emysql_app:retry_when_closed(),
     receive
         {'DOWN', Mref, process, Pid, Reason}
-            when Reason == {failed_to_recv_packet_header, closed};
-                 Reason == tcp_connection_closed,
+            when Reason == tcp_connection_closed ->
+            case emysql_conn:reset_connection(PoolServer,
+                                              emysql_conn_mgr:pools(PoolServer),
+                                              Connection, keep) of
+                NewConnection when is_record(NewConnection, emysql_connection) ->
+                    [_ | OtherArgs] = Args,
+                    monitor_work(PoolServer, NewConnection, Timeout,
+                                 [NewConnection | OtherArgs]);
+                {error, FailedReset} ->
+                    exit({connection_down, {and_conn_reset_failed, FailedReset}})
+            end;
+        {'DOWN', Mref, process, Pid, Reason}
+            when Reason == {failed_to_recv_packet_header, closed},
                  RetryWhenClosed == true ->
             case emysql_conn:reset_connection(PoolServer,
                                               emysql_conn_mgr:pools(PoolServer),
